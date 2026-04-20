@@ -36,3 +36,5 @@ feedparser
 protobuf==5.29.3
 wandb
 jupyterlab
+litellm
+groq

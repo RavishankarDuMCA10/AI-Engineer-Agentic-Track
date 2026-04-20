@@ -5,9 +5,11 @@ from pathlib import Path
 import json
 import pickle
 from tqdm.notebook import tqdm  # type: ignore
+from openai import OpenAI
 
 load_dotenv(override=True)
-groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# groq = Groq(api_key=os.environ.get("GROQ_API_KEY")) // with curret plan I am not able to use groq
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 MODEL = "openai/gpt-oss-20b"
 BATCHES_FOLDER = "batches"
@@ -63,27 +65,34 @@ class Batch:
 
     def make_file(self):
         batch_file = self.batches / self.filename
-        with batch_file.open("w", encoding="utf-8") as f:
+        with batch_file.open("w") as f:
             for item in self.items[self.start : self.end]:
                 f.write(self.make_jsonl(item))
                 f.write("\n")
 
     def send_file(self):
         batch_file = self.batches / self.filename
-        with batch_file.open("rb", encoding="utf-8") as f:
-            response = groq.files.create(file=f, purpose="batch")
+        with batch_file.open("rb") as f:
+            # response = groq.files.create(file=f, purpose="batch")
+            response = client.files.create(file=f, purpose="batch")
         self.file_id = response.id
 
     def submit_batch(self):
-        response = groq.batches.create(
+        # response = groq.batches.create(
+        #     completion_window="24h",
+        #     endpoint="v1/chat/completions",
+        #     input_file_id=self.file_id,
+        # )
+        response = client.batches.create(
             completion_window="24h",
-            endpoint="v1/chat/completions",
+            endpoint="/v1/chat/completions",
             input_file_id=self.file_id,
         )
         self.batch_id = response.id
 
     def is_ready(self):
-        response = groq.batches.retrieve(self.batch_id)
+        # response = groq.batches.retrieve(self.batch_id)
+        response = client.batches.retrieve(self.batch_id)
         status = response.status
         if status == "completed":
             self.output_file_id = response.output_file_id
@@ -91,7 +100,8 @@ class Batch:
 
     def fetch_output(self):
         output_file = str(self.output / self.filename)
-        response = groq.files.content(self.output_file_id)
+        # response = groq.files.content(self.output_file_id)
+        response = client.files.content(self.output_file_id)
         response.write_to_file(output_file)
 
     def apply_output(self):
