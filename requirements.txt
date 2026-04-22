@@ -38,3 +38,4 @@ wandb
 jupyterlab
 litellm
 groq
+xgboost
